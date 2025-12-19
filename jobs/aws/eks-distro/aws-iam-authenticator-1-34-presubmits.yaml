@@ -33,6 +33,7 @@ presubmits:
       s3_credentials_secret: s3-credentials
     labels:
       image-build: "true"
+      local-registry: "true"
       disk-usage: "true"
     spec:
       serviceaccountName: presubmits-build-account
@@ -47,6 +48,8 @@ presubmits:
           trap 'touch /status/done && rm -rf /home/prow/go/src/' EXIT
           &&
           build/lib/buildkit_check.sh
+          &&
+          build/lib/local_registry_check.sh
           &&
           make build -C $PROJECT_PATH
           &&
@@ -73,6 +76,18 @@ presubmits:
         securityContext:
           runAsUser: 1000
           runAsGroup: 1000
+      - name: registry
+        image: public.ecr.aws/docker/library/registry:2
+        command:
+        - sh
+        args:
+        - /registry-script/entrypoint.sh
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 3
       - command:
         - sh
         args:
